@@ -8,7 +8,7 @@
     "start": "node server.js"
   },
   "keywords": ["videochat", "webrtc", "chat"],
-  "author": "Your Name",
+  "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^5.1.0",
