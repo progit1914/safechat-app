@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeChat - Next Gen Video Chat</title>
+   <style>
+    /* --- GLOBAL STYLES --- */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #000;
+        color: #fff;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* --- SCREEN CONTAINERS --- */
+    #setup {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    #chat-screen {
+        display: none;
+        height: 100vh;
+        position: relative;
+    }
+
+    /* --- SPLIT SCREEN VIDEO LAYOUT --- */
+    #video-container {
+        display: flex;
+        width: 100%;
+        height: 100vh;
+        cursor: pointer; /* Show a hand cursor to indicate it's clickable */
+    }
+
+    #localVideo {
+        flex: 1;
+        background: #1a1a1a;
+        object-fit: cover;
+        transform: scaleX(-1);
+    }
+
+    #remoteVideo {
+        flex: 1;
+        background: #1a1a1a;
+        object-fit: cover;
+    }
+
+    /* --- CONTROL BAR (Hidden by default, shown with JS) --- */
+    #controls {
+        display: none; /* HIDDEN BY DEFAULT */
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        padding: 12px 20px;
+        border-radius: 50px;
+        backdrop-filter: blur(5px);
+        gap: 10px;
+        z-index: 100;
+        align-items: center;
+    }
+
+    #controls.visible {
+        display: flex; /* SHOWN WHEN THIS CLASS IS ADDED */
+    }
+
+    /* --- Discreet Top Status Bar --- */
+    #status {
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: #ccc;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        z-index: 100;
+    }
+
+    /* --- BUTTONS & INPUTS --- */
+    select, button, input {
+        padding: 10px 16px;
+        border-radius: 50px;
+        border: none;
+        font-size: 14px;
+    }
+
+    select {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    button {
+        background: #1877f2;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 90px;
+    }
+    button:hover {
+        background: #166fe5;
+    }
+    #nextBtn { background: #f02828; }
+    #nextBtn:hover { background: #d11a1a; }
+    #reportBtn { background: #ff8a00; }
+    #reportBtn:hover { background: #e67a00; }
+
+    #message-input {
+        width: 200px;
+        background: rgba(255, 255, 255, 0.07);
+        color: white;
+        border: 1px solid #444;
+    }
+
+    /* --- MESSAGE HISTORY --- */
+    #messages {
+        position: absolute;
+        top: 50px; /* Positioned below the status bar */
+        left: 50%;
+        transform: translateX(-50%);
+        max-height: 150px;
+        width: 70%;
+        overflow-y: scroll;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 8px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.9em;
+    }
+</style>
+</head>
+<body>
+    <div id="setup">
+        <h1>SafeChat</h1>
+        <p>Select your gender and who you’d like to meet:</p>
+        <select id="genderSelect">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select>
+        <select id="preferenceSelect">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="any">Anyone</option>
+        </select>
+        <br>
+        <button onclick="joinChat()">Start Chatting</button>
+    </div>
+
+    <div id="chat-screen">
+        <div id="status">Connecting...</div>
+        <div id="video-container">
+            <video id="localVideo" autoplay muted></video>
+            <video id="remoteVideo" autoplay></video>
+        </div>
+              <!-- Hidden Control Bar (Like Chitchat.gg) -->
+        <div id="controls">
+            <button onclick="skipPartner()" id="nextBtn">Next</button>
+            <input type="text" id="message-input" placeholder="Send a message...">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="reportUser()" id="reportBtn">Report</button>
+        </div>
+        <div id="messages"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let peerConnection;
+        let currentPartnerId = null;
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        async function setupVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = stream;
+                return stream;
+            } catch (error) {
+                console.error("Error accessing media devices:", error);
+                alert("Could not access your camera/microphone. Please check permissions.");
+            }
+        }
+
+        async function joinChat() {
+            const gender = document.getElementById('genderSelect').value;
+            const preference = document.getElementById('preferenceSelect').value;
+            
+            const stream = await setupVideo();
+            if (!stream) return;
+
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('chat-screen').style.display = 'block';
+
+            socket.emit('join', { gender, pref: preference });
+        }
+
+        socket.on('matched', async (data) => {
+            currentPartnerId = data.partnerId;
+            document.getElementById('status').textContent = 'Connected';
+            initializePeerConnection();
+        });
+
+        socket.on('waiting', () => {
+            document.getElementById('status').textContent = 'Looking for someone...';
+        });
+
+        function initializePeerConnection() {
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            const localStream = document.getElementById('localVideo').srcObject;
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+            
+            peerConnection.ontrack = (event) => {
+                const remoteVideo = document.getElementById('remoteVideo');
+                remoteVideo.srcObject = event.streams[0];
+            };
+            
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('signal', { target: currentPartnerId, candidate: event.candidate });
+                }
+            };
+            
+            peerConnection.createOffer()
+                .then(offer => peerConnection.setLocalDescription(offer))
+                .then(() => {
+                    socket.emit('signal', { 
+                        target: currentPartnerId, 
+                        offer: peerConnection.localDescription 
+                    });
+                });
+        }
+
+        socket.on('signal', async (data) => {
+            if (!peerConnection) initializePeerConnection();
+            
+            if (data.offer) {
+                await peerConnection.setRemoteDescription(data.offer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('signal', { target: data.sender, answer: answer });
+            } else if (data.answer) {
+                await peerConnection.setRemoteDescription(data.answer);
+            } else if (data.candidate) {
+                await peerConnection.addIceCandidate(data.candidate);
+            }
+        });
+
+        socket.on('text-message', (data) => {
+            displayMessage(data.from, data.message);
+        });
+
+        socket.on('message-blocked', (data) => {
+            alert(`Message blocked: ${data.reason}`);
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (message && currentPartnerId) {
+                socket.emit('text-message', { targetId: currentPartnerId, message: message });
+                displayMessage('You', message);
+                input.value = '';
+            }
+        }
+
+        function displayMessage(sender, text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${sender}: ${text}`;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function skipPartner() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            currentPartnerId = null;
+            document.getElementById('status').textContent = 'Looking for someone...';
+            socket.emit('join', { 
+                gender: document.getElementById('genderSelect').value, 
+                pref: document.getElementById('preferenceSelect').value 
+            });
+        }
+
+        function reportUser() {
+            if (currentPartnerId) {
+                socket.emit('report-user', currentPartnerId);
+                alert('User reported. Thank you for making SafeChat safer.');
+                skipPartner();
+            }
+        }
+
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        // --- New Code: Toggle controls on click ---
+        let controlsVisible = false;
+
+        function toggleControls() {
+            controlsVisible = !controlsVisible;
+            const controlsElement = document.getElementById('controls');
+            if (controlsVisible) {
+                controlsElement.classList.add('visible');
+            } else {
+                controlsElement.classList.remove('visible');
+            }
+        }
+
+        // Add click event to the video container to toggle controls
+        document.getElementById('video-container').addEventListener('click', function(event) {
+            // Don't toggle if the user clicked on a button inside the controls
+            if (!event.target.closest('#controls')) {
+                toggleControls();
+            }
+        });
+    </script>
+</body>
+</html>

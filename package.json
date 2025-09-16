@@ -1,0 +1,17 @@
+{
+  "name": "safechat-app",
+  "version": "1.0.0",
+  "description": "A modern video chat platform with moderation and filters.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["videochat", "webrtc", "chat"],
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
+}
