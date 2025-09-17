@@ -1,4 +1,5 @@
 // server.js
+import fetch from 'node-fetch';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
