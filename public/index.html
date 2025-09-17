@@ -3,244 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#000000">
     <title>SafeChat - Next Gen Video Chat</title>
-   <style>
-    /* --- GLOBAL STYLES --- */
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-        background: #000;
-        color: #fff;
-        height: 100vh;
-        overflow: hidden;
-    }
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-    /* --- SCREEN CONTAINERS --- */
-    #setup {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+        /* --- SCREEN CONTAINERS --- */
+        #setup {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
 
-    #chat-screen {
-        display: none;
-        height: 100vh;
-        position: relative;
-    }
+        #chat-screen {
+            display: none;
+            height: 100vh;
+            position: relative;
+        }
 
-    /* --- SPLIT SCREEN VIDEO LAYOUT --- */
-    #video-container {
-        display: flex;
-        width: 100%;
-        height: 100vh;
-        cursor: pointer; /* Show a hand cursor to indicate it's clickable */
-    }
+        /* --- SPLIT SCREEN VIDEO LAYOUT --- */
+        #video-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            cursor: pointer;
+        }
 
-    #localVideo {
-        flex: 1;
-        background: #1a1a1a;
-        object-fit: cover;
-        transform: scaleX(-1);
-    }
+        #localVideo {
+            flex: 1;
+            background: #1a1a1a;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
 
-    #remoteVideo {
-        flex: 1;
-        background: #1a1a1a;
-        object-fit: cover;
-    }
+        #remoteVideo {
+            flex: 1;
+            background: #1a1a1a;
+            object-fit: cover;
+        }
 
-    /* --- CONTROL BAR (Hidden by default, shown with JS) --- */
-    #controls {
-        display: none; /* HIDDEN BY DEFAULT */
-        position: absolute;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.7);
-        padding: 12px 20px;
-        border-radius: 50px;
-        backdrop-filter: blur(5px);
-        gap: 10px;
-        z-index: 100;
-        align-items: center;
-    }
+        /* --- CONTROL BAR --- */
+        #controls {
+            display: none;
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 20px;
+            border-radius: 50px;
+            gap: 10px;
+            z-index: 100;
+            align-items: center;
+        }
 
-    #controls.visible {
-        display: flex; /* SHOWN WHEN THIS CLASS IS ADDED */
-    }
+        #controls.visible {
+            display: flex;
+        }
 
-    /* --- Discreet Top Status Bar --- */
-    #status {
-        position: absolute;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.5);
-        color: #ccc;
-        padding: 6px 15px;
-        border-radius: 20px;
-        font-size: 0.9em;
-        z-index: 100;
-    }
+        /* --- CHAT UI --- */
+        #chat-toggle {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    /* --- BUTTONS & INPUTS --- */
-    select, button, input {
-        padding: 10px 16px;
-        border-radius: 50px;
-        border: none;
-        font-size: 14px;
-    }
+        #message-container {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 20px;
+            display: none;
+            gap: 8px;
+            z-index: 100;
+            align-items: center;
+        }
 
-    select {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-    }
+        #message-container.visible {
+            display: flex;
+        }
 
-    button {
-        background: #1877f2;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        min-width: 90px;
-    }
-    button:hover {
-        background: #166fe5;
-    }
-    #nextBtn { background: #f02828; }
-    #nextBtn:hover { background: #d11a1a; }
-    #reportBtn { background: #ff8a00; }
-    #reportBtn:hover { background: #e67a00; }
+        /* --- BUTTONS & INPUTS --- */
+        select, button, input {
+            padding: 10px 16px;
+            border-radius: 50px;
+            border: none;
+            font-size: 14px;
+        }
 
-    #message-input {
-        width: 200px;
-        background: rgba(255, 255, 255, 0.07);
-        color: white;
-        border: 1px solid #444;
-    }
+        select {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
 
-    /* --- MESSAGE HISTORY --- */
-    #messages {
-        position: absolute;
-        top: 50px; /* Positioned below the status bar */
-        left: 50%;
-        transform: translateX(-50%);
-        max-height: 150px;
-        width: 70%;
-        overflow-y: scroll;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 8px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 0.9em;
-    }
-  
-    /* === MOBILE RESPONSIVE DESIGN === */
-@media (max-width: 768px) {
-    #video-container {
-        flex-direction: column;
-        height: 100vh;
-        position: relative;
-    }
-    
-    /* REMOTE VIDEO - Takes full screen */
-    #remoteVideo {
-        width: 100%;
-        height: 100%;
-        border: none;
-    }
-    
-    /* LOCAL VIDEO - Small PIP in bottom corner */
-    #localVideo {
-        position: absolute;
-        bottom: 80px; /* Above controls */
-        right: 10px;
-        width: 100px;
-        height: 150px;
-        border: 2px solid white;
-        border-radius: 10px;
-        z-index: 10;
-    }
-    
-    /* CONTROLS - Bottom bar */
-    #controls {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 10px;
-        border-radius: 0;
-        flex-wrap: wrap;
-        gap: 8px;
-        height: auto;
-    }
-    
-    #controls button, #message-input {
-        padding: 10px 12px;
-        font-size: 12px;
-        min-width: unset;
-    }
-    
-    #message-input {
-        flex: 1;
-        min-width: 120px;
-    }
-    
-    /* STATUS - Top center */
-    #status {
-        top: 10px;
-        padding: 8px 20px;
-        font-size: 14px;
-    }
-    
-    /* MESSAGES - Overlay on video */
-    #messages {
-        position: absolute;
-        top: 50px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-height: 100px;
-        background: rgba(0, 0, 0, 0.7);
-        padding: 8px;
-        border-radius: 8px;
-        font-size: 12px;
-        overflow-y: auto;
-    }
-}
+        button {
+            background: #1877f2;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
 
-/* For very small phones */
-@media (max-width: 480px) {
-    #localVideo {
-        width: 80px;
-        height: 120px;
-        bottom: 70px;
-    }
-    
-    #controls {
-        padding: 8px;
-    }
-    
-    #controls button {
-        flex: 1;
-        min-width: 50px;
-        padding: 8px 10px;
-    }
-}
-</style>
+        button:hover {
+            background: #166fe5;
+        }
+
+        #nextBtn { 
+            background: #f02828; 
+        }
+        
+        #nextBtn:hover { 
+            background: #d11a1a; 
+        }
+        
+        #reportBtn { 
+            background: #ff8a00; 
+        }
+        
+        #reportBtn:hover { 
+            background: #e67a00; 
+        }
+
+        #send-btn {
+            background: #1877f2;
+            border-radius: 20px;
+            padding: 10px 15px;
+            white-space: nowrap;
+        }
+
+        #message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.07);
+            color: white;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            border-radius: 20px;
+        }
+
+        /* --- MESSAGE DISPLAY --- */
+        #messages {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-height: 200px;
+            width: 70%;
+            overflow-y: scroll;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* --- STATUS INDICATOR --- */
+        #status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 50px;
+        }
+
+        /* === MOBILE RESPONSIVE DESIGN === */
+        @media (max-width: 768px) {
+            #video-container {
+                flex-direction: column;
+                height: 100vh;
+                position: relative;
+            }
+            
+            #remoteVideo {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+            
+            #localVideo {
+                position: absolute;
+                bottom: 80px;
+                right: 10px;
+                width: 100px;
+                height: 150px;
+                border: 2px solid white;
+                border-radius: 10px;
+                z-index: 10;
+            }
+            
+            #controls {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 10px;
+                border-radius: 0;
+                flex-wrap: wrap;
+                gap: 8px;
+                height: auto;
+            }
+            
+            #controls button {
+                padding: 10px 12px;
+                font-size: 12px;
+                min-width: unset;
+            }
+            
+            #chat-toggle {
+                bottom: 60px;
+            }
+            
+            #message-container {
+                bottom: 60px;
+            }
+            
+            #status {
+                top: 10px;
+                padding: 8px 20px;
+                font-size: 14px;
+            }
+            
+            #messages {
+                top: 50px;
+                width: 90%;
+                max-height: 100px;
+                font-size: 12px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- Setup Screen -->
     <div id="setup">
         <h1>SafeChat</h1>
-        <p>Select your gender and who you’d like to meet:</p>
+        <p>Select your gender and who you'd like to meet:</p>
         <select id="genderSelect">
             <option value="male">Male</option>
             <option value="female">Female</option>
@@ -254,20 +277,31 @@
         <button onclick="joinChat()">Start Chatting</button>
     </div>
 
+    <!-- Main Chat Screen -->
     <div id="chat-screen">
         <div id="status">Connecting...</div>
+        
         <div id="video-container">
             <video id="localVideo" autoplay muted></video>
             <video id="remoteVideo" autoplay></video>
         </div>
-              <!-- Hidden Control Bar (Like Chitchat.gg) -->
-        <div id="controls">
-            <button onclick="skipPartner()" id="nextBtn">Next</button>
-            <input type="text" id="message-input" placeholder="Send a message...">
-            <button onclick="sendMessage()">Send</button>
-            <button onclick="reportUser()" id="reportBtn">Report</button>
-        </div>
+        
+        <!-- Message Display -->
         <div id="messages"></div>
+    </div>
+
+    <!-- Control Bar -->
+    <div id="controls">
+        <button onclick="skipPartner()" id="nextBtn">Next</button>
+        <button onclick="reportUser()" id="reportBtn">Report</button>
+    </div>
+
+    <!-- Chat Toggle & Input -->
+    <button id="chat-toggle" onclick="toggleChat()">💬</button>
+    
+    <div id="message-container">
+        <input type="text" id="message-input" placeholder="Send a message...">
+        <button id="send-btn" onclick="sendMessage()">Send</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -277,6 +311,7 @@
         let currentPartnerId = null;
         const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
+        // --- Video Setup ---
         async function setupVideo() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -297,10 +332,10 @@
 
             document.getElementById('setup').style.display = 'none';
             document.getElementById('chat-screen').style.display = 'block';
-
             socket.emit('join', { gender, pref: preference });
         }
 
+        // --- WebRTC Connection ---
         socket.on('matched', async (data) => {
             currentPartnerId = data.partnerId;
             document.getElementById('status').textContent = 'Connected';
@@ -355,6 +390,7 @@
             }
         });
 
+        // --- Messaging System ---
         socket.on('text-message', (data) => {
             displayMessage(data.from, data.message);
         });
@@ -381,6 +417,7 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
+        // --- Controls ---
         function skipPartner() {
             if (peerConnection) {
                 peerConnection.close();
@@ -402,10 +439,7 @@
             }
         }
 
-        document.getElementById('message-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-        // --- New Code: Toggle controls on click ---
+        // --- UI Controls ---
         let controlsVisible = false;
 
         function toggleControls() {
@@ -418,12 +452,23 @@
             }
         }
 
-        // Add click event to the video container to toggle controls
+        function toggleChat() {
+            const chatContainer = document.getElementById('message-container');
+            chatContainer.classList.toggle('visible');
+            if (chatContainer.classList.contains('visible')) {
+                document.getElementById('message-input').focus();
+            }
+        }
+
+        // --- Event Listeners ---
         document.getElementById('video-container').addEventListener('click', function(event) {
-            // Don't toggle if the user clicked on a button inside the controls
             if (!event.target.closest('#controls')) {
                 toggleControls();
             }
+        });
+
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
     </script>
 </body>
