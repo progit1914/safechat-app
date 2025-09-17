@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
     <title>SafeChat - Next Gen Video Chat</title>
    <style>
     /* --- GLOBAL STYLES --- */
@@ -138,6 +141,63 @@
         text-align: center;
         font-size: 0.9em;
     }
+    /* === MOBILE RESPONSIVE DESIGN === */
+@media (max-width: 768px) {
+    #video-container {
+        flex-direction: column;
+        height: 70vh;
+    }
+    
+    #localVideo, #remoteVideo {
+        width: 100%;
+        height: 50%;
+        border: none;
+        border-bottom: 2px solid #333;
+    }
+    
+    #controls {
+        bottom: 10px;
+        padding: 10px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    #controls button, #message-input {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: unset;
+    }
+    
+    #message-input {
+        width: 120px;
+    }
+    
+    #status {
+        top: 10px;
+        padding: 5px 15px;
+        font-size: 12px;
+    }
+    
+    #messages {
+        top: 40px;
+        width: 90%;
+        max-height: 120px;
+        font-size: 12px;
+    }
+}
+
+/* For very small phones */
+@media (max-width: 480px) {
+    #controls {
+        bottom: 5px;
+        padding: 8px;
+    }
+    
+    #controls button {
+        flex: 1;
+        min-width: 60px;
+    }
+}
 </style>
 </head>
 <body>
