@@ -37,6 +37,31 @@ async function moderateText(text) {
     return { flagged: false };
 }
 
+// Add to server.js
+async function moderateImage(imageBase64) {
+    const VISION_API_KEY = process.env.GOOGLE_VISION_KEY;
+    
+    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: [{
+                image: { content: imageBase64.replace('data:image/jpeg;base64,', '') },
+                features: [{ type: 'SAFE_SEARCH_DETECTION' }]
+            }]
+        })
+    });
+    
+    const result = await response.json();
+    const safeSearch = result.responses[0].safeSearchAnnotation;
+    
+    // Check for adult, violence, etc.
+    if (safeSearch.adult === 'LIKELY' || safeSearch.adult === 'VERY_LIKELY') {
+        return { flagged: true, reason: 'Adult content detected' };
+    }
+    return { flagged: false };
+}
+
 // --- Matchmaking Logic ---
 function tryMatch(socket) {
     const me = users.find(u => u.id === socket.id);
@@ -112,6 +137,26 @@ io.on('connection', (socket) => {
     }
 }
 
+    // Handle video snapshot moderation
+    socket.on('video-snapshot', async ({ image }) => {
+        try {
+            const result = await moderateImage(image);
+            if (result.flagged) {
+                // 1. Notify both users
+                io.to(socket.id).emit('content-violation', { reason: result.reason });
+                // 2. Increment report count
+                reports[socket.id] = (reports[socket.id] || 0) + 3; // Severe violation
+                // 3. Auto-ban if threshold reached
+                if (reports[socket.id] >= REPORT_THRESHOLD) {
+                    socket.emit('banned');
+                    users = users.filter(u => u.id !== socket.id);
+                    socket.disconnect();
+                }
+            }
+        } catch (error) {
+            console.error('Video moderation error:', error);
+        }
+    });
         // If message is clean, send it to the partner
         io.to(targetId).emit('text-message', { from: socket.id, message: message });
     });

@@ -141,61 +141,98 @@
         text-align: center;
         font-size: 0.9em;
     }
+  
     /* === MOBILE RESPONSIVE DESIGN === */
 @media (max-width: 768px) {
     #video-container {
         flex-direction: column;
-        height: 70vh;
+        height: 100vh;
+        position: relative;
     }
     
-    #localVideo, #remoteVideo {
+    /* REMOTE VIDEO - Takes full screen */
+    #remoteVideo {
         width: 100%;
-        height: 50%;
+        height: 100%;
         border: none;
-        border-bottom: 2px solid #333;
     }
     
+    /* LOCAL VIDEO - Small PIP in bottom corner */
+    #localVideo {
+        position: absolute;
+        bottom: 80px; /* Above controls */
+        right: 10px;
+        width: 100px;
+        height: 150px;
+        border: 2px solid white;
+        border-radius: 10px;
+        z-index: 10;
+    }
+    
+    /* CONTROLS - Bottom bar */
     #controls {
-        bottom: 10px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.8);
         padding: 10px;
+        border-radius: 0;
         flex-wrap: wrap;
         gap: 8px;
+        height: auto;
     }
     
     #controls button, #message-input {
-        padding: 8px 12px;
+        padding: 10px 12px;
         font-size: 12px;
         min-width: unset;
     }
     
     #message-input {
-        width: 120px;
+        flex: 1;
+        min-width: 120px;
     }
     
+    /* STATUS - Top center */
     #status {
         top: 10px;
-        padding: 5px 15px;
-        font-size: 12px;
+        padding: 8px 20px;
+        font-size: 14px;
     }
     
+    /* MESSAGES - Overlay on video */
     #messages {
-        top: 40px;
+        position: absolute;
+        top: 50px;
+        left: 50%;
+        transform: translateX(-50%);
         width: 90%;
-        max-height: 120px;
+        max-height: 100px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 8px;
+        border-radius: 8px;
         font-size: 12px;
+        overflow-y: auto;
     }
 }
 
 /* For very small phones */
 @media (max-width: 480px) {
+    #localVideo {
+        width: 80px;
+        height: 120px;
+        bottom: 70px;
+    }
+    
     #controls {
-        bottom: 5px;
         padding: 8px;
     }
     
     #controls button {
         flex: 1;
-        min-width: 60px;
+        min-width: 50px;
+        padding: 8px 10px;
     }
 }
 </style>
