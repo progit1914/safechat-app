@@ -74,20 +74,42 @@ io.on('connection', (socket) => {
     socket.on('text-message', async ({ targetId, message }) => {
         console.log(`Message from ${socket.id} to ${targetId}: ${message}`);
 
-        // Moderate the message before sending
-        const moderationResult = await moderateText(message);
-        if (moderationResult.flagged) {
-            socket.emit('message-blocked', { reason: moderationResult.reason });
-            // Increment report count for bad behavior
-            reports[socket.id] = (reports[socket.id] || 0) + 1;
-            // Check if user should be banned
-            if (reports[socket.id] >= REPORT_THRESHOLD) {
-                socket.emit('banned');
-                users = users.filter(u => u.id !== socket.id);
-                socket.disconnect();
-            }
-            return; // Stop the message from being sent
+       async function moderateText(text) {
+    // First, check with simple keywords (fast and free)
+    if (simpleKeywordCheck(text)) {
+        return { flagged: true, reason: 'Inappropriate keyword' };
+    }
+
+    // Try OpenAI Moderation if key is available
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    
+    if (!OPENAI_API_KEY) {
+        console.log("No OpenAI API key found. Using keyword fallback.");
+        return { flagged: false };
+    }
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/moderations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({ input: text })
+        });
+
+        const data = await response.json();
+        
+        if (data.results[0]?.flagged) {
+            return { flagged: true, reason: 'AI Moderation: Violates content policy' };
         }
+        return { flagged: false };
+
+    } catch (error) {
+        console.error("Error calling OpenAI Moderation:", error);
+        return { flagged: false };
+    }
+}
 
         // If message is clean, send it to the partner
         io.to(targetId).emit('text-message', { from: socket.id, message: message });
