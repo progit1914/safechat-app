@@ -5,14 +5,19 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "keywords": ["videochat", "webrtc", "chat"],
+  "keywords": [
+    "videochat",
+    "webrtc",
+    "chat"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-  "express": "^5.1.0",
-  "socket.io": "^4.8.1",
-  "node-fetch": "^2.7.0"
+    "express": "^5.1.0",
+    "node-fetch": "^2.7.0",
+    "socket.io": "^4.8.1"
   }
 }

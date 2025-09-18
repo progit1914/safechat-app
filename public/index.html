@@ -3,473 +3,630 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SafeChat - Next Gen Video Chat</title>
-    <style>
-        /* --- GLOBAL STYLES --- */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    <title>SafeChat - Professional Video Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+        * {
             margin: 0;
             padding: 0;
-            background: #000;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #0a0a0a;
             color: #fff;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* --- SCREEN CONTAINERS --- */
-        #setup {
+        .video-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .video-panel {
+            flex: 1;
+            position: relative;
+            background: #1a1a1a;
+            overflow: hidden;
+        }
+
+        .video-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: flex-end; /* Align buttons to right */
+            padding: 15px;
+            z-index: 10;
+        }
+
+        /* Remove user labels */
+        .user-label {
+            display: none; /* Hide the "You" and "Stranger" labels */
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Add end chat button */
+        .end-chat-btn {
+            color: #ff6b6b; /* Red color for end chat */
+        }
+
+        .report-btn {
+            color: #ff6b6b;
+        }
+
+        .next-btn {
+            color: #6e8efb;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .video-element {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .video-element.remote {
+            transform: scaleX(1);
+        }
+
+        /* Remove camera status */
+        .camera-status {
+            display: none; /* Hide the "Camera: Active" text */
+        }
+
+        /* --- MESSAGE SECTION --- */
+        .user-messages {
+            height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 10px;
+            scrollbar-width: none;
+            background: none !important;
+            display: flex;
+            flex-direction: column; /* Messages appear top to bottom */
+        }
+
+        .user-messages::-webkit-scrollbar { 
+            display: none; 
+        }
+
+        .user-message {
+            display: inline-block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: white;
+            animation: messagePopUp 0.25s ease-out;
+            line-height: 1.4;
+            word-break: break-word;
+            border-radius: 12px;
+            padding: 6px 10px;
+            max-width: 90%;
+        }
+
+        /* --- COLOR-CODED BUBBLES --- */
+        .local-message {
+            background: rgba(24, 119, 242, 0.15); /* Light blue glass bubble */
+            align-self: flex-start;
+        }
+        .local-message::before {
+            content: "You: ";
+            font-weight: 700;
+            color: #1877f2;
+        }
+
+        .remote-message {
+            background: rgba(167, 119, 227, 0.15); /* Light purple glass bubble */
+            align-self: flex-start;
+        }
+        .remote-message::before {
+            content: "Stranger: ";
+            font-weight: 700;
+            color: #a777e3;
+        }
+
+        /* Pop-up animation */
+        @keyframes messagePopUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Input bar */
+        .user-message-box {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            background: none !important;
+            padding: 0 20px;
+            z-index: 10;
+            border-top: none !important;
+        }
+
+        .user-message-input {
+            display: flex;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 6px 10px;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .user-message-input input {
+            flex: 1;
+            background: transparent;
+            color: white;
+            border: none;
+            padding: 6px 0;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .user-send-btn {
+            background: rgba(24, 119, 242, 0.85);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        .user-send-btn:hover {
+            background: rgba(24, 119, 242, 1);
+            transform: scale(1.05);
+        }
+
+        /* --- SETUP SCREEN --- */
+        .setup-screen {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        #chat-screen {
-            display: none;
-            height: 100vh;
-            position: relative;
-        }
-
-        /* --- SPLIT SCREEN VIDEO LAYOUT --- */
-        #video-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-            cursor: pointer;
-        }
-
-        #localVideo {
-            flex: 1;
-            background: #1a1a1a;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-
-        #remoteVideo {
-            flex: 1;
-            background: #1a1a1a;
-            object-fit: cover;
-        }
-
-        /* --- CONTROL BAR --- */
-        #controls {
-            display: none;
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            padding: 12px 20px;
-            border-radius: 50px;
-            gap: 10px;
-            z-index: 100;
-            align-items: center;
-        }
-
-        #controls.visible {
-            display: flex;
-        }
-
-        /* --- CHAT UI --- */
-        #chat-toggle {
-            position: absolute;
-            bottom: 70px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #message-container {
-            position: absolute;
-            bottom: 70px;
-            left: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px;
-            border-radius: 20px;
-            display: none;
-            gap: 8px;
-            z-index: 100;
-            align-items: center;
-        }
-
-        #message-container.visible {
-            display: flex;
-        }
-
-        /* --- BUTTONS & INPUTS --- */
-        select, button, input {
-            padding: 10px 16px;
-            border-radius: 50px;
-            border: none;
-            font-size: 14px;
-        }
-
-        select {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        button {
-            background: #1877f2;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        button:hover {
-            background: #166fe5;
-        }
-
-        #nextBtn { 
-            background: #f02828; 
-        }
-        
-        #nextBtn:hover { 
-            background: #d11a1a; 
-        }
-        
-        #reportBtn { 
-            background: #ff8a00; 
-        }
-        
-        #reportBtn:hover { 
-            background: #e67a00; 
-        }
-
-        #send-btn {
-            background: #1877f2;
-            border-radius: 20px;
-            padding: 10px 15px;
-            white-space: nowrap;
-        }
-
-        #message-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.07);
-            color: white;
-            border: 1px solid #444;
-            padding: 10px 15px;
-            border-radius: 20px;
-        }
-
-        /* --- MESSAGE DISPLAY --- */
-        #messages {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            max-height: 200px;
-            width: 70%;
-            overflow-y: scroll;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px;
             text-align: center;
         }
 
-        /* --- STATUS INDICATOR --- */
-        #status {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 50px;
+        .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #6e8efb, #a777e3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        /* === MOBILE RESPONSIVE DESIGN === */
+        .setup-subtitle {
+            margin-bottom: 30px;
+            font-size: 16px;
+            opacity: 0.9;
+            color: #ddd;
+        }
+
+        .options-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+
+        .option {
+            text-align: center;
+            width: 48%;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .option:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .option.selected {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(110, 142, 251, 0.5);
+        }
+
+        .option-icon {
+            font-size: 30px;
+            margin-bottom: 15px;
+        }
+
+        .start-btn {
+            background: #1877f2;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            #video-container {
+            .video-container {
                 flex-direction: column;
-                height: 100vh;
-                position: relative;
             }
             
-            #remoteVideo {
+            .video-panel {
+                height: 50vh;
+            }
+            
+            .user-message-box {
+                padding: 12px 15px;
+            }
+            
+            .user-messages {
+                height: 120px;
+            }
+            
+            .user-message {
+                font-size: 14px;
+                padding: 10px 14px;
+            }
+            
+            .options-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .option {
                 width: 100%;
-                height: 100%;
-                border: none;
+                max-width: 250px;
             }
             
-            #localVideo {
-                position: absolute;
-                bottom: 80px;
-                right: 10px;
-                width: 100px;
-                height: 150px;
-                border: 2px solid white;
-                border-radius: 10px;
-                z-index: 10;
-            }
-            
-            #controls {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: rgba(0, 0, 0, 0.8);
-                padding: 10px;
-                border-radius: 0;
-                flex-wrap: wrap;
-                gap: 8px;
-                height: auto;
-            }
-            
-            #controls button {
-                padding: 10px 12px;
-                font-size: 12px;
-                min-width: unset;
-            }
-            
-            #chat-toggle {
-                bottom: 60px;
-            }
-            
-            #message-container {
-                bottom: 60px;
-            }
-            
-            #status {
-                top: 10px;
-                padding: 8px 20px;
+            .action-btn {
+                width: 35px;
+                height: 35px;
                 font-size: 14px;
             }
             
-            #messages {
-                top: 50px;
-                width: 90%;
-                max-height: 100px;
-                font-size: 12px;
+            .user-message-input input {
+                font-size: 14px;
+            }
+            
+            .user-send-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Setup Screen -->
-    <div id="setup">
-        <h1>SafeChat</h1>
-        <p>Select your gender and who you'd like to meet:</p>
-        <select id="genderSelect">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-        </select>
-        <select id="preferenceSelect">
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="any">Anyone</option>
-        </select>
-        <br>
-        <button onclick="joinChat()">Start Chatting</button>
-    </div>
-
-    <!-- Main Chat Screen -->
-    <div id="chat-screen">
-        <div id="status">Connecting...</div>
+    <div class="setup-screen" id="setup-screen">
+        <div class="logo">SafeChat</div>
+        <p class="setup-subtitle">Select your gender and who you'd like to meet:</p>
         
-        <div id="video-container">
-            <video id="localVideo" autoplay muted></video>
-            <video id="remoteVideo" autoplay></video>
+        <div class="options-container">
+            <div class="option" onclick="selectOption(this, 'male')">
+                <div class="option-icon">♂️</div>
+                <div>Male</div>
+            </div>
+            
+            <div class="option" onclick="selectOption(this, 'female')">
+                <div class="option-icon">♀️</div>
+                <div>Female</div>
+            </div>
         </div>
         
-        <!-- Message Display -->
-        <div id="messages"></div>
+        <button class="start-btn" onclick="startChatting()">Start Chatting</button>
     </div>
 
-    <!-- Control Bar -->
-    <div id="controls">
-        <button onclick="skipPartner()" id="nextBtn">Next</button>
-        <button onclick="reportUser()" id="reportBtn">Report</button>
+    <div id="chat-container" style="display: none;">
+        <div class="video-container">
+            <!-- Local User Video Panel -->
+            <div class="video-panel">
+                 <div class="video-header">
+                    <div class="action-buttons">
+                        <button class="action-btn end-chat-btn" title="End Chat">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <button class="action-btn report-btn" title="Report">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                        <button class="action-btn next-btn" title="Next">
+                            <i class="fas fa-forward"></i>
+                        </button>
+                    </div>
+                </div>
+                <video class="video-element" id="local-video" autoplay muted></video>
+                <div class="camera-status" id="local-camera-status">Camera: Starting...</div>
+                
+                <!-- Local User Message Box -->
+                <div class="user-message-box local-message-box" id="local-message-box">
+                    <div class="user-messages" id="local-messages">
+                        <div class="user-message local-message">I'm good, thanks! How about you?</div>
+                    </div>
+                    <div class="user-message-input">
+                        <input type="text" placeholder="Send a message..." id="local-message-input">
+                        <button class="user-send-btn" onclick="sendLocalMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Remote User Video Panel -->
+            <div class="video-panel">
+                <div class="video-header">
+                    <div class="action-buttons">
+                        <button class="action-btn end-chat-btn" title="End Chat">
+                            <i class="fas fa-phone-slash"></i>
+                        </button>
+                        <button class="action-btn report-btn" title="Report">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                        <button class="action-btn next-btn" title="Next">
+                            <i class="fas fa-forward"></i>
+                        </button>
+                    </div>
+                </div>
+                <video class="video-element remote" id="remote-video" autoplay></video>
+                <div class="camera-status">Waiting for stranger...</div>
+                
+                <!-- Remote User Message Box -->
+                <div class="user-message-box remote-message-box" id="remote-message-box">
+                    <div class="user-messages" id="remote-messages">
+                        <div class="user-message remote-message">Hello there! How are you doing today?</div>
+                    </div>
+                    <div class="user-message-input">
+                        <input type="text" placeholder="Send a message..." id="remote-message-input" disabled>
+                        <button class="user-send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Chat Toggle & Input -->
-    <button id="chat-toggle" onclick="toggleChat()">💬</button>
-    
-    <div id="message-container">
-        <input type="text" id="message-input" placeholder="Send a message...">
-        <button id="send-btn" onclick="sendMessage()">Send</button>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        let peerConnection;
-        let currentPartnerId = null;
-        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-        // --- Video Setup ---
-        async function setupVideo() {
+        let selectedGender = null;
+        let localStream = null;
+        let localChatVisible = false;
+        let remoteChatVisible = false;
+        
+        function selectOption(element, gender) {
+            const options = document.querySelectorAll('.option');
+            options.forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedGender = gender;
+        }
+        
+        async function startChatting() {
+            if (!selectedGender) {
+                alert('Please select your gender before starting.');
+                return;
+            }
+            
+            // Initialize camera
+            const success = await initializeCamera();
+            if (!success) {
+                alert('Could not access your camera. Please check permissions and try again.');
+                return;
+            }
+            
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'block';
+            
+            // Simulate receiving a message after a delay
+            setTimeout(() => {
+                addMessage("Nice to meet you! What brings you here today?", 'remote-message', 'remote-messages', 'remote');
+            }, 2000);
+        }
+        
+        async function initializeCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('localVideo').srcObject = stream;
-                return stream;
-            } catch (error) {
-                console.error("Error accessing media devices:", error);
-                alert("Could not access your camera/microphone. Please check permissions.");
-            }
-        }
-
-        async function joinChat() {
-            const gender = document.getElementById('genderSelect').value;
-            const preference = document.getElementById('preferenceSelect').value;
-            
-            const stream = await setupVideo();
-            if (!stream) return;
-
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('chat-screen').style.display = 'block';
-            socket.emit('join', { gender, pref: preference });
-        }
-
-        // --- WebRTC Connection ---
-        socket.on('matched', async (data) => {
-            currentPartnerId = data.partnerId;
-            document.getElementById('status').textContent = 'Connected';
-            initializePeerConnection();
-        });
-
-        socket.on('waiting', () => {
-            document.getElementById('status').textContent = 'Looking for someone...';
-        });
-
-        function initializePeerConnection() {
-            peerConnection = new RTCPeerConnection(configuration);
-            
-            const localStream = document.getElementById('localVideo').srcObject;
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-            
-            peerConnection.ontrack = (event) => {
-                const remoteVideo = document.getElementById('remoteVideo');
-                remoteVideo.srcObject = event.streams[0];
-            };
-            
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    socket.emit('signal', { target: currentPartnerId, candidate: event.candidate });
-                }
-            };
-            
-            peerConnection.createOffer()
-                .then(offer => peerConnection.setLocalDescription(offer))
-                .then(() => {
-                    socket.emit('signal', { 
-                        target: currentPartnerId, 
-                        offer: peerConnection.localDescription 
-                    });
+                const statusIndicator = document.getElementById('local-camera-status');
+                statusIndicator.textContent = 'Camera: Accessing...';
+                
+                // Request camera and microphone access
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
                 });
+                
+                // Display local video stream
+                const localVideo = document.getElementById('local-video');
+                localVideo.srcObject = localStream;
+                
+                statusIndicator.textContent = 'Camera: Active';
+                return true;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                document.getElementById('local-camera-status').textContent = 'Camera: Error';
+                return false;
+            }
         }
-
-        socket.on('signal', async (data) => {
-            if (!peerConnection) initializePeerConnection();
+        
+        // Toggle local chat box
+        function toggleLocalChat() {
+            localChatVisible = !localChatVisible;
+            const localChat = document.getElementById('local-message-box');
+            localChat.style.display = localChatVisible ? 'block' : 'none';
             
-            if (data.offer) {
-                await peerConnection.setRemoteDescription(data.offer);
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.emit('signal', { target: data.sender, answer: answer });
-            } else if (data.answer) {
-                await peerConnection.setRemoteDescription(data.answer);
-            } else if (data.candidate) {
-                await peerConnection.addIceCandidate(data.candidate);
+            // Focus input when shown
+            if (localChatVisible) {
+                setTimeout(() => {
+                    document.getElementById('local-message-input').focus();
+                }, 100);
             }
-        });
+        }
 
-        // --- Messaging System ---
-        socket.on('text-message', (data) => {
-            displayMessage(data.from, data.message);
-        });
+        // Toggle remote chat box
+        function toggleRemoteChat() {
+            remoteChatVisible = !remoteChatVisible;
+            const remoteChat = document.getElementById('remote-message-box');
+            remoteChat.style.display = remoteChatVisible ? 'block' : 'none';
+        }
 
-        socket.on('message-blocked', (data) => {
-            alert(`Message blocked: ${data.reason}`);
-        });
-
-        function sendMessage() {
-            const input = document.getElementById('message-input');
+        // Send message from local user
+        function sendLocalMessage() {
+            const input = document.getElementById('local-message-input');
             const message = input.value.trim();
-            if (message && currentPartnerId) {
-                socket.emit('text-message', { targetId: currentPartnerId, message: message });
-                displayMessage('You', message);
+            
+            if (message) {
+                addMessage(message, 'local-message', 'local-messages', 'local');
                 input.value = '';
+                
+                // Simulate remote response
+                setTimeout(() => {
+                    addMessage("That's interesting! Tell me more about yourself.", 'remote-message', 'remote-messages', 'remote');
+                }, 1500);
             }
         }
 
-        function displayMessage(sender, text) {
-            const messagesDiv = document.getElementById('messages');
-            const messageElement = document.createElement('div');
-            messageElement.textContent = `${sender}: ${text}`;
-            messagesDiv.appendChild(messageElement);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        // Add message to a specific message box
+        function addMessage(text, messageClass, containerId, type) {
+            const messagesContainer = document.getElementById(containerId);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `user-message ${messageClass}`;
+            messageDiv.textContent = text;
+            
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Auto-show remote chat when receiving a message
+            if (type === 'remote' && !remoteChatVisible) {
+                toggleRemoteChat();
+            }
         }
 
-        // --- Controls ---
-        function skipPartner() {
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            currentPartnerId = null;
-            document.getElementById('status').textContent = 'Looking for someone...';
-            socket.emit('join', { 
-                gender: document.getElementById('genderSelect').value, 
-                pref: document.getElementById('preferenceSelect').value 
+        // Add click event to video containers to toggle chat
+        document.querySelectorAll('.video-panel').forEach(panel => {
+            panel.addEventListener('click', function(e) {
+                // Don't toggle if clicking on buttons or other interactive elements
+                if (e.target.closest('.action-buttons') || e.target.closest('.user-message-box')) {
+                    return;
+                }
+                
+                // Toggle the appropriate chat box
+                if (this.querySelector('#local-video')) {
+                    toggleLocalChat();
+                } else {
+                    toggleRemoteChat();
+                }
             });
-        }
-
-        function reportUser() {
-            if (currentPartnerId) {
-                socket.emit('report-user', currentPartnerId);
-                alert('User reported. Thank you for making SafeChat safer.');
-                skipPartner();
-            }
-        }
-
-        // --- UI Controls ---
-        let controlsVisible = false;
-
-        function toggleControls() {
-            controlsVisible = !controlsVisible;
-            const controlsElement = document.getElementById('controls');
-            if (controlsVisible) {
-                controlsElement.classList.add('visible');
-            } else {
-                controlsElement.classList.remove('visible');
-            }
-        }
-
-        function toggleChat() {
-            const chatContainer = document.getElementById('message-container');
-            chatContainer.classList.toggle('visible');
-            if (chatContainer.classList.contains('visible')) {
-                document.getElementById('message-input').focus();
-            }
-        }
-
-        // --- Event Listeners ---
-        document.getElementById('video-container').addEventListener('click', function(event) {
-            if (!event.target.closest('#controls')) {
-                toggleControls();
-            }
         });
 
-        document.getElementById('message-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        // Allow sending message with Enter key
+        document.getElementById('local-message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendLocalMessage();
+            }
         });
+        
+        // Add event listeners to action buttons
+        document.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                alert('User has been reported. Thank you for making SafeChat safer.');
+            });
+        });
+        
+        document.querySelectorAll('.next-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('Skip to the next user?')) {
+                    alert('Connecting you to the next user...');
+                    // In a real app, this would disconnect and find a new user
+                }
+            });
+        });
+
+        // Add event listener for end chat buttons
+        document.querySelectorAll('.end-chat-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to end the chat?')) {
+                    // End chat logic
+                    alert('Chat ended. Returning to home screen.');
+                    
+                    // Hide chat screen and show setup screen
+                    document.getElementById('chat-container').style.display = 'none';
+                    document.getElementById('setup-screen').style.display = 'flex';
+                    
+                    // Stop camera stream if it exists
+                    if (localStream) {
+                        localStream.getTracks().forEach(track => track.stop());
+                        localStream = null;
+                    }
+                    
+                    // Reset peer connection
+                    if (peerConnection) {
+                        peerConnection.close();
+                        peerConnection = null;
+                    }
+                    
+                    currentPartnerId = null;
+                    
+                    // Clear messages
+                    document.getElementById('local-messages').innerHTML = '';
+                    document.getElementById('remote-messages').innerHTML = '';
+                }
+            });
+        });
+        
+        // Simulate remote video after a delay (for demo purposes)
+        setTimeout(() => {
+            document.querySelectorAll('.camera-status')[1].textContent = 'Camera: Active';
+        }, 3000);
     </script>
 </body>
 </html>

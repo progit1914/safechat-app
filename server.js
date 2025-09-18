@@ -1,5 +1,4 @@
 // server.js
-import fetch from 'node-fetch';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -11,53 +10,33 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*" } });
+const io = new Server(httpServer, { 
+  cors: { 
+    origin: "*",
+    methods: ["GET", "POST"]
+  } 
+});
 
-// Serve static files (HTML, JS) from the 'public' folder
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
 // --- Data Structures ---
 let users = []; // { id, gender, pref, socket }
 let reports = {}; // { socketId: reportCount }
-const REPORT_THRESHOLD = 3; // Ban after 3 reports
+let activePairs = new Map(); // Track active conversations
+const REPORT_THRESHOLD = 3;
 
-// --- Moderation Functions ---
+// --- Helper Functions ---
 function simpleKeywordCheck(text) {
-    const blacklist = ['nude', 'sex', 'kill', 'bomb', 'suicide', 'fuck', 'shit'];
+    const blacklist = ['nude', 'sex', 'kill', 'bomb', 'suicide', 'fuck', 'shit', 'porn'];
     const low = text.toLowerCase();
     return blacklist.some(word => low.includes(word));
 }
 
 async function moderateText(text) {
-    // First, check with simple keywords (fast and free)
     if (simpleKeywordCheck(text)) {
-        return { flagged: true, reason: 'Inappropriate keyword' };
-    }
-    // LATER: Add AI moderation API call here (OpenAI, Perspective API)
-    return { flagged: false };
-}
-
-// Add to server.js
-async function moderateImage(imageBase64) {
-    const VISION_API_KEY = process.env.GOOGLE_VISION_KEY;
-    
-    const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            requests: [{
-                image: { content: imageBase64.replace('data:image/jpeg;base64,', '') },
-                features: [{ type: 'SAFE_SEARCH_DETECTION' }]
-            }]
-        })
-    });
-    
-    const result = await response.json();
-    const safeSearch = result.responses[0].safeSearchAnnotation;
-    
-    // Check for adult, violence, etc.
-    if (safeSearch.adult === 'LIKELY' || safeSearch.adult === 'VERY_LIKELY') {
-        return { flagged: true, reason: 'Adult content detected' };
+        return { flagged: true, reason: 'Inappropriate keyword detected' };
     }
     return { flagged: false };
 }
@@ -67,22 +46,35 @@ function tryMatch(socket) {
     const me = users.find(u => u.id === socket.id);
     if (!me) return;
 
-    // Find a partner whose gender matches my preference AND whose preference matches my gender
-    let partner = users.find(user => {
-        if (user.id === me.id) return false; // Skip self
+    // Find compatible partner
+    const partner = users.find(user => {
+        if (user.id === me.id) return false;
         const myPrefOk = me.pref === 'any' || user.gender === me.pref;
         const theirPrefOk = user.pref === 'any' || user.pref === me.gender;
         return myPrefOk && theirPrefOk;
     });
 
     if (partner) {
-        // Match found! Notify both users and remove them from the pool
-        socket.emit('matched', { partnerId: partner.id });
-        partner.socket.emit('matched', { partnerId: me.id });
+        // Create a unique room for this pair
+        const roomId = `${socket.id}-${partner.id}`;
+        
+        // Join both users to the room
+        socket.join(roomId);
+        partner.socket.join(roomId);
+        
+        // Store active pair
+        activePairs.set(socket.id, { partnerId: partner.id, roomId });
+        activePairs.set(partner.id, { partnerId: socket.id, roomId });
 
+        // Notify both users
+        socket.emit('matched', { partnerId: partner.id, roomId });
+        partner.socket.emit('matched', { partnerId: socket.id, roomId });
+
+        // Remove from waiting list
         users = users.filter(u => u.id !== me.id && u.id !== partner.id);
+        
+        console.log(`Matched ${socket.id} with ${partner.id} in room ${roomId}`);
     } else {
-        // No match found, keep waiting
         socket.emit('waiting');
     }
 }
@@ -91,97 +83,142 @@ function tryMatch(socket) {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    // User joins with preferences
     socket.on('join', (userData) => {
-        // userData: { gender: 'male', pref: 'female' }
-        users.push({ id: socket.id, gender: userData.gender, pref: userData.pref, socket: socket });
+        users.push({ 
+            id: socket.id, 
+            gender: userData.gender, 
+            pref: userData.pref, 
+            socket: socket 
+        });
         tryMatch(socket);
     });
 
-    socket.on('text-message', async ({ targetId, message }) => {
-        console.log(`Message from ${socket.id} to ${targetId}: ${message}`);
+    // Text message handling
+    socket.on('text-message', async (data) => {
+        const pair = activePairs.get(socket.id);
+        if (!pair) return;
 
-       async function moderateText(text) {
-    // First, check with simple keywords (fast and free)
-    if (simpleKeywordCheck(text)) {
-        return { flagged: true, reason: 'Inappropriate keyword' };
-    }
+        // Moderate message
+        const moderation = await moderateText(data.message);
+        if (moderation.flagged) {
+            socket.emit('message-blocked', { reason: moderation.reason });
+            return;
+        }
 
-    // Try OpenAI Moderation if key is available
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    
-    if (!OPENAI_API_KEY) {
-        console.log("No OpenAI API key found. Using keyword fallback.");
-        return { flagged: false };
-    }
-
-    try {
-        const response = await fetch('https://api.openai.com/v1/moderations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({ input: text })
+        // Send to partner
+        socket.to(pair.roomId).emit('text-message', {
+            from: socket.id,
+            message: data.message
         });
-
-        const data = await response.json();
-        
-        if (data.results[0]?.flagged) {
-            return { flagged: true, reason: 'AI Moderation: Violates content policy' };
-        }
-        return { flagged: false };
-
-    } catch (error) {
-        console.error("Error calling OpenAI Moderation:", error);
-        return { flagged: false };
-    }
-}
-
-    // Handle video snapshot moderation
-    socket.on('video-snapshot', async ({ image }) => {
-        try {
-            const result = await moderateImage(image);
-            if (result.flagged) {
-                // 1. Notify both users
-                io.to(socket.id).emit('content-violation', { reason: result.reason });
-                // 2. Increment report count
-                reports[socket.id] = (reports[socket.id] || 0) + 3; // Severe violation
-                // 3. Auto-ban if threshold reached
-                if (reports[socket.id] >= REPORT_THRESHOLD) {
-                    socket.emit('banned');
-                    users = users.filter(u => u.id !== socket.id);
-                    socket.disconnect();
-                }
-            }
-        } catch (error) {
-            console.error('Video moderation error:', error);
-        }
-    });
-        // If message is clean, send it to the partner
-        io.to(targetId).emit('text-message', { from: socket.id, message: message });
     });
 
+    // WebRTC signaling
+    socket.on('offer', (data) => {
+        const pair = activePairs.get(socket.id);
+        if (pair) {
+            socket.to(pair.partnerId).emit('offer', {
+                offer: data.offer,
+                sender: socket.id
+            });
+        }
+    });
+
+    socket.on('answer', (data) => {
+        const pair = activePairs.get(socket.id);
+        if (pair) {
+            socket.to(pair.partnerId).emit('answer', {
+                answer: data.answer,
+                sender: socket.id
+            });
+        }
+    });
+
+    socket.on('ice-candidate', (data) => {
+        const pair = activePairs.get(socket.id);
+        if (pair) {
+            socket.to(pair.partnerId).emit('ice-candidate', {
+                candidate: data.candidate,
+                sender: socket.id
+            });
+        }
+    });
+
+    // Report user
     socket.on('report-user', (reportedId) => {
-        console.log(`User ${reportedId} reported by ${socket.id}`);
         reports[reportedId] = (reports[reportedId] || 0) + 1;
+        
         if (reports[reportedId] >= REPORT_THRESHOLD) {
-            const userToBan = users.find(u => u.id === reportedId);
-            if (userToBan) {
-                userToBan.socket.emit('banned');
-                users = users.filter(u => u.id !== reportedId);
-                userToBan.socket.disconnect();
+            const userSocket = io.sockets.sockets.get(reportedId);
+            if (userSocket) {
+                userSocket.emit('banned');
+                userSocket.disconnect();
             }
         }
     });
 
+    // Skip/next partner
+    socket.on('skip-partner', () => {
+        const pair = activePairs.get(socket.id);
+        if (pair) {
+            // Notify partner
+            socket.to(pair.partnerId).emit('partner-skipped');
+            
+            // Clean up
+            activePairs.delete(socket.id);
+            activePairs.delete(pair.partnerId);
+            
+            // Return both to pool
+            const partnerSocket = io.sockets.sockets.get(pair.partnerId);
+            if (partnerSocket) {
+                users.push({
+                    id: partnerSocket.id,
+                    gender: users.find(u => u.id === partnerSocket.id)?.gender || 'unknown',
+                    pref: users.find(u => u.id === partnerSocket.id)?.pref || 'any',
+                    socket: partnerSocket
+                });
+                partnerSocket.emit('waiting');
+            }
+            
+            users.push({
+                id: socket.id,
+                gender: users.find(u => u.id === socket.id)?.gender || 'unknown',
+                pref: users.find(u => u.id === socket.id)?.pref || 'any',
+                socket: socket
+            });
+            socket.emit('waiting');
+        }
+    });
+
+    // Handle disconnect
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        
+        // Clean up user from all lists
         users = users.filter(u => u.id !== socket.id);
+        
+        const pair = activePairs.get(socket.id);
+        if (pair) {
+            // Notify partner
+            socket.to(pair.partnerId).emit('partner-disconnected');
+            activePairs.delete(socket.id);
+            activePairs.delete(pair.partnerId);
+        }
     });
 });
 
-// Start the server
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        usersWaiting: users.length,
+        activePairs: activePairs.size / 2 
+    });
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Health check available at http://localhost:${PORT}/health`);
 });
